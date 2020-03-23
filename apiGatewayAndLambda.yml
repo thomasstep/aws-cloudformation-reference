@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Starter template for API Gateway and Lambda function integration
+
+Resources:
+#-------------------------------------------------------------------------------
+# LAMBDA RESOURCES
+#-------------------------------------------------------------------------------
+  LambdaIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            - Effect: Allow
+              Principal:
+                  Service:
+                    - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+      Description: Starter Lambda Function IAM Role
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      RoleName: StarterLambdaFunctionRole
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          module.exports.handler = (event, context, callback) => {
+            console.log('Hello World!');
+            const data = {
+              statusCode: 200,
+              body: JSON.stringify({
+                hello: 'world',
+              }),
+            };
+            callback(null, data);
+          }
+      Description: Starter Lambda Function
+      Environment:
+        Variables:
+          NODE_ENV: DEV
+      FunctionName: StarterLambda
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt
+        - LambdaIamRole
+        - Arn
+      Runtime: nodejs12.x
+      Timeout: 3
+
+  LambdaFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt
+        - LambdaFunction
+        - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Join
+        - ""
+        - - "arn:aws:execute-api:"
+          - !Ref AWS::Region
+          - ":"
+          - !Ref AWS::AccountId
+          - ":"
+          - !Ref ApiGatewayRest
+          - /*
+
+#-------------------------------------------------------------------------------
+# API GATEWAY RESOURCES
+#-------------------------------------------------------------------------------
+
+  ApiGatewayRest:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: Starter API Gateway
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: StarterAPIGateway
+      Policy:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: execute-api:Invoke
+            Resource: !Join
+              - ""
+              - - execute-api:/
+                - "*"
+
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt
+        - ApiGatewayRest
+        - RootResourceId
+      PathPart: hello
+      RestApiId: !Ref ApiGatewayRest
+
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        IntegrationHttpMethod: POST
+        IntegrationResponses:
+          - StatusCode: "200"
+        Type: AWS_PROXY
+        Uri: !Join
+          - ""
+          - - "arn:aws:apigateway:"
+            - !Ref AWS::Region
+            - :lambda:path/2015-03-31/functions/
+            - !GetAtt
+              - LambdaFunction
+              - Arn
+            - /invocations
+      MethodResponses:
+        - StatusCode: "200"
+      ResourceId: !Ref ApiGatewayResource
+      RestApiId: !Ref ApiGatewayRest
+
+  CloudWatchLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            - Effect: Allow
+              Principal:
+                  Service:
+                    - apigateway.amazonaws.com
+              Action:
+                - sts:AssumeRole
+      Description: Starter API Gateway Logging IAM Role
+      ManagedPolicyArns:
+        # Write Lambda's logs to CloudWatch
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+      RoleName: StarterApiGatewayRole
+
+  ApiGatewayLogging:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt
+        - CloudWatchLoggingRole
+        - Arn
+    DependsOn: ApiGatewayRest
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: Original starter template deployment
+      RestApiId: !Ref ApiGatewayRest
+    DependsOn: ApiGatewayMethod
+
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref ApiGatewayDeployment
+      Description: Original starter template stage
+      MethodSettings:
+        -
+          HttpMethod: POST
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          ResourcePath: /~1hello
+      RestApiId: !Ref ApiGatewayRest
+      StageName: starter
+    DependsOn: ApiGatewayLogging
