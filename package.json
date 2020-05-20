@@ -1,0 +1,26 @@
+{
+  "name": "startertemplates",
+  "version": "1.0.0",
+  "description": "Starter CloudFormation Templates",
+  "main": "canary.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasstep/starterTemplates.git"
+  },
+  "keywords": [
+    "cloudformation",
+    "aws"
+  ],
+  "author": "Thomas Step",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thomasstep/starterTemplates/issues"
+  },
+  "homepage": "https://github.com/thomasstep/starterTemplates#readme",
+  "dependencies": {
+    "axios": "^0.19.2"
+  }
+}

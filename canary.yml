@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Starter template for API Canary
+
+Resources:
+  CanaryLambdaIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            - Effect: Allow
+              Principal:
+                  Service:
+                    - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+      Description: Canary Lambda Function IAM Role
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      RoleName: CanaryLambdaFunctionRole
+
+  CanaryLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: canary
+      Code:
+        ZipFile: |
+          module.exports.handler = (event, context, callback) => {
+            console.log('Write code to hit your API');
+            callback(null, data);
+          }
+      Description: Lambda to monitor uptime
+      Handler: canary.handler
+      MemorySize: 128
+      Role: !GetAtt
+        - CanaryLambdaIamRole
+        - Arn
+      Runtime: nodejs12.x
+      Timeout: 30
+
+  CanaryCron:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Cron for canary
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt
+          - CanaryLambda
+          - Arn
+          Id: api-canary
+
+  CanaryLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CanaryLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt
+        - CanaryCron
+        - Arn

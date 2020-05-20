@@ -48,7 +48,7 @@ Resources:
         - LambdaIamRole
         - Arn
       Runtime: nodejs12.x
-      Timeout: 3
+      Timeout: 30
 
   LambdaFunctionPermission:
     Type: AWS::Lambda::Permission
