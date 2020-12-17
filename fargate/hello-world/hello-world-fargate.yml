@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Starter template for ECS
+
+Parameters:
+  VpcStack:
+    Type: String
+    Description: Name of VPC stack to build off of
+    Default: vpc
+
+  EcsClusterStack:
+    Type: String
+    Description: Name of ECS Cluster stack to build off of
+    Default: ecs-cluster
+
+  Image:
+    Type: String
+    Description: URI of image you would like to use
+    Default: 712578128737.dkr.ecr.us-east-1.amazonaws.com/ecrrepo-6mgycl8yio7b:latest
+
+Resources:
+  HelloWorldTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true
+      HealthCheckPort: 8080
+      HealthCheckProtocol: HTTP
+      Port: 8080
+      Protocol: HTTP
+      TargetType: ip
+      VpcId:
+        Fn::ImportValue: !Sub ${VpcStack}-vpc-id
+
+
+  HelloWorldListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: 
+        - Order: 1
+          TargetGroupArn: !Ref HelloWorldTargetGroup
+          Type: forward
+      LoadBalancerArn:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-alb-arn
+      Port: 8080
+      Protocol: HTTP
+    DependsOn:
+      - HelloWorldTargetGroup
+
+  HelloWorldService:
+    Type: AWS::ECS::Service
+    Properties: 
+      Cluster:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-ecs-cluster
+      DeploymentController:
+        Type: ECS
+      DesiredCount: 1
+      HealthCheckGracePeriodSeconds: 60
+      LaunchType: FARGATE
+      LoadBalancers: 
+        - 
+          ContainerName: hello-world
+          ContainerPort: 8080
+          TargetGroupArn: !Ref HelloWorldTargetGroup
+      NetworkConfiguration: 
+          AwsvpcConfiguration: 
+            AssignPublicIp: ENABLED
+            SecurityGroups: 
+              -
+                Fn::ImportValue: !Sub ${EcsClusterStack}-default-security-group
+            Subnets: 
+              -
+                Fn::ImportValue: !Sub ${VpcStack}-subnet-a-id
+      TaskDefinition: !Ref HelloWorldTaskDefinition
+
+  HelloWorldLogGroup: 
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      RetentionInDays: 7
+
+  HelloWorldTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      ContainerDefinitions: 
+        -
+          Name: hello-world
+          Essential: true
+          Image: !Ref Image
+          LogConfiguration: 
+              LogDriver: awslogs
+              Options: 
+                awslogs-group: !Ref HelloWorldLogGroup
+                awslogs-stream-prefix: hello-world-container
+                awslogs-region: !Ref AWS::Region
+          PortMappings: 
+            -
+              ContainerPort: 8080
+              HostPort: 8080
+              Protocol: tcp
+      Cpu: '256'
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-default-role
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities: 
+        -  FARGATE
+      TaskRoleArn:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-default-role

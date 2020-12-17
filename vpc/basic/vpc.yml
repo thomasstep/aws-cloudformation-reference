@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Starter template for ECS
+
+Resources:
+  BasicVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+
+  SubnetA:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: us-east-1a
+      VpcId: !Ref BasicVpc
+      MapPublicIpOnLaunch: true
+
+  SubnetB:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: us-east-1b
+      VpcId: !Ref BasicVpc
+
+  SubnetC:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: us-east-1c
+      VpcId: !Ref BasicVpc
+
+  SubnetD:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: us-east-1d
+      VpcId: !Ref BasicVpc
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BasicVpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref BasicVpc
+        
+  Route:
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId: !Ref RouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref InternetGateway
+
+  SubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetA
+      RouteTableId: !Ref RouteTable
+
+  SubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetB
+      RouteTableId: !Ref RouteTable
+
+  SubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetC
+      RouteTableId: !Ref RouteTable
+
+  SubnetDRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetD
+      RouteTableId: !Ref RouteTable
+
+Outputs:
+  VpcExport:
+    Description: A reference to the created VPC
+    Value: !Ref BasicVpc
+    Export:
+      Name: !Sub ${AWS::StackName}-vpc-id
+  
+  SubnetAExport:
+    Description: A reference to subnet A
+    Value: !Ref SubnetA
+    Export:
+      Name: !Sub ${AWS::StackName}-subnet-a-id
+
+  SubnetBExport:
+    Description: A reference to subnet B
+    Value: !Ref SubnetB
+    Export:
+      Name: !Sub ${AWS::StackName}-subnet-b-id
+
+  SubnetCExport:
+    Description: A reference to subnet C
+    Value: !Ref SubnetC
+    Export:
+      Name: !Sub ${AWS::StackName}-subnet-c-id
+
+  SubnetDExport:
+    Description: A reference to subnet D
+    Value: !Ref SubnetD
+    Export:
+      Name: !Sub ${AWS::StackName}-subnet-d-id

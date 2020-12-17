@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Starter template for ECS
+
+Parameters:
+  VpcStack:
+    Type: String
+    Description: Name of VPC stack to build off of
+    Default: vpc
+
+Resources:
+  # https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html
+  EcrRepo:
+    Type: AWS::ECR::Repository
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+
+  DefaultSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Allow http to client host
+        VpcId:
+          Fn::ImportValue: !Sub ${VpcStack}-vpc-id
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  DefaultRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - ec2.amazonaws.com
+              - ecs.amazonaws.com
+              - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess
+
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Scheme: internal
+      SecurityGroups: 
+        - !Ref DefaultSecurityGroup
+      Subnets: 
+        - Fn::ImportValue: !Sub ${VpcStack}-subnet-a-id
+        - Fn::ImportValue: !Sub ${VpcStack}-subnet-b-id
+      Type: application
+
+
+Outputs:
+  EcsClusterExport:
+    Description: A reference to the created ECS Cluster
+    Value: !Ref EcsCluster
+    Export:
+      Name: !Sub ${AWS::StackName}-ecs-cluster
+
+  DefaultSecurityGroupExport:
+    Description: A reference to the created SG
+    Value: !Ref DefaultSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-default-security-group
+
+  DefaultRoleExport:
+    Description: A reference to the created IAM Role
+    Value: !Ref DefaultRole
+    Export:
+      Name: !Sub ${AWS::StackName}-default-role
+
+  ApplicationLoadBalancerArnExport:
+    Description: A reference to the created ALB
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Sub ${AWS::StackName}-alb-arn
