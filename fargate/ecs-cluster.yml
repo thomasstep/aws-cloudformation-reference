@@ -5,7 +5,7 @@ Parameters:
   VpcStack:
     Type: String
     Description: Name of VPC stack to build off of
-    Default: vpc
+    Default: vpc-stack
 
 Resources:
   # https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html

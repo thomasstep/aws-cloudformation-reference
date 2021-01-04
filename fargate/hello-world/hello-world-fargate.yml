@@ -5,12 +5,12 @@ Parameters:
   VpcStack:
     Type: String
     Description: Name of VPC stack to build off of
-    Default: vpc
+    Default: vpc-stack
 
   EcsClusterStack:
     Type: String
     Description: Name of ECS Cluster stack to build off of
-    Default: ecs-cluster
+    Default: ecs-cluster-stack
 
   Image:
     Type: String

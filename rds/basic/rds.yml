@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Starter template for ECS
+
+Parameters:
+  VpcStack:
+    Type: String
+    Description: Name of VPC stack to build off of
+    Default: vpc-stack
+
+  DefaultDatabaseName:
+    Type: String
+    Description: Name of default database if creating from scratch
+    Default: defaultdatabase
+
+  SnapshotArn:
+    Type: String
+    Description: Snapshot to build DB off of; leave as 'none' if new DB
+    # TODO figure out arn regex
+    # ConstraintDescription: (arn-regex|none)
+    Default: none
+
+Conditions:
+  isNewDb: !Equals [!Ref SnapshotArn, none]
+
+  isSnapshotDb:
+    !Not [!Equals [!Ref SnapshotArn, none]]
+
+Resources:
+  Credentials:
+    Condition: isNewDb
+    DeletionPolicy: Retain
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
+  ClusterSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Default subnet group
+      SubnetIds:
+        -
+          Fn::ImportValue: !Sub ${VpcStack}-subnet-a-id
+        -
+          Fn::ImportValue: !Sub ${VpcStack}-subnet-b-id
+
+  ClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Allow mysql to db
+        VpcId:
+          Fn::ImportValue: !Sub ${VpcStack}-vpc-id
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+
+  Cluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DatabaseName:
+        !If
+            - isNewDb
+            - !Ref DefaultDatabaseName
+            - !Ref AWS::NoValue
+      DBSubnetGroupName: !Ref ClusterSubnetGroup
+      Engine: aurora
+      EngineMode: serverless
+      MasterUsername:
+        !If
+          - isNewDb
+          - !Join
+            - ''
+            -
+              - '{{resolve:secretsmanager:'
+              - !Ref Credentials
+              - ':SecretString:username}}'
+          - !Ref AWS::NoValue
+      MasterUserPassword:
+        !If
+          - isNewDb
+          - !Join
+            - ''
+            -
+              - '{{resolve:secretsmanager:'
+              - !Ref Credentials
+              - ':SecretString:password}}'
+          - !Ref AWS::NoValue
+      ScalingConfiguration:
+          AutoPause: true
+          MaxCapacity: 128
+          MinCapacity: 1
+          SecondsUntilAutoPause: 3000
+      SnapshotIdentifier:
+        !If
+          - isSnapshotDb
+          - !Ref SnapshotArn
+          - !Ref AWS::NoValue
+      VpcSecurityGroupIds:
+        - !Ref ClusterSecurityGroup
+
+  CredentialsTargetAttachment:
+    Condition: isNewDb
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref Credentials
+      TargetId: !Ref Cluster
+      TargetType: AWS::RDS::DBCluster
+
+Outputs:
+  SecretArn:
+    Description: ARN for the DB's secret
+    Value: !Ref Credentials
+    Export:
+      Name: !Sub ${AWS::StackName}-credentials
