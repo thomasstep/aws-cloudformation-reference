@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Starter template for ECS
+Description: Basic VPC similar to the default VPC
 
 Resources:
   BasicVpc:
