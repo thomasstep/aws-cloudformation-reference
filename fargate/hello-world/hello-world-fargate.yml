@@ -15,7 +15,6 @@ Parameters:
   Image:
     Type: String
     Description: URI of image you would like to use
-    Default: 712578128737.dkr.ecr.us-east-1.amazonaws.com/ecrrepo-6mgycl8yio7b:latest
 
 Resources:
   HelloWorldTargetGroup:
