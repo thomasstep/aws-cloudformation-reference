@@ -45,7 +45,7 @@ Resources:
         -
           Fn::ImportValue: !Sub ${VpcStack}-subnet-a-id
         -
-          Fn::ImportValue: !Sub ${VpcStack}-subnet-b-id
+          Fn::ImportValue: !Sub ${VpcStack}-public-subnet-b-id
 
   ClusterSecurityGroup:
     Type: AWS::EC2::SecurityGroup

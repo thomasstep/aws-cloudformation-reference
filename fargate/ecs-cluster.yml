@@ -70,14 +70,14 @@ Resources:
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties: 
+    Properties:
       IpAddressType: ipv4
-      Scheme: internal
-      SecurityGroups: 
+      Scheme: internet-facing
+      SecurityGroups:
         - !Ref DefaultSecurityGroup
-      Subnets: 
-        - Fn::ImportValue: !Sub ${VpcStack}-subnet-a-id
-        - Fn::ImportValue: !Sub ${VpcStack}-subnet-b-id
+      Subnets:
+        - Fn::ImportValue: !Sub ${VpcStack}-public-subnet-a-id
+        - Fn::ImportValue: !Sub ${VpcStack}-public-subnet-b-id
       Type: application
 
 
