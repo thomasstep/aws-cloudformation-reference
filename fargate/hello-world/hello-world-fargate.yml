@@ -104,3 +104,10 @@ Resources:
         -  FARGATE
       TaskRoleArn:
         Fn::ImportValue: !Sub ${EcsClusterStack}-default-role
+
+Outputs:
+  FargateServiceName:
+    Description: A reference to the created Fargate Service
+    Value: !GetAtt HelloWorldService.Name
+    Export:
+      Name: !Sub ${AWS::StackName}-fargate-service-name

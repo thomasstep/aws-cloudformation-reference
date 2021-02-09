@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CI/CD pipeline for serverless API
+
+Parameters:
+  GithubOauthToken:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: github-oauth-token
+    NoEcho: true
+  CodePipelineS3BucketName:
+    Type: String
+    Default: thomasstep-codepipelinebucket
+  EcsClusterStack:
+    Type: String
+    Default: fargate-cicd-demo-ecs-stack
+  FargateStack:
+    Type: String
+    Default: fargate-cicd-demo-fargate-stack
+
+
+Resources:
+  EcrRepo:
+    Type: AWS::ECR::Repository
+
+  CodePipelineArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref CodePipelineS3BucketName
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            - Effect: Allow
+              Principal:
+                  Service:
+                    - codepipeline.amazonaws.com
+                    - codebuild.amazonaws.com
+              Action:
+                - sts:AssumeRole
+      Description: IAM Role for CodePipeline
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+        - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+      RoleName: MyCodePipelineRole
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      # Name: CicdPipeline
+      ArtifactStore:
+        Location: !Ref CodePipelineS3BucketName
+        Type: S3
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        -
+          Name: Ingress
+          Actions:
+            - InputArtifacts: []
+              ActionTypeId:
+                Version: '1'
+                Owner: ThirdParty
+                Category: Source
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: SourceArtifact
+              RunOrder: 1
+              Configuration:
+                Owner: thomasstep
+                Repo: aws-cloudformation-reference
+                PollForSourceChanges: 'true'
+                Branch: master
+                OAuthToken: !Ref GithubOauthToken
+              Name: ApplicationSource
+        -
+          Name: Build
+          Actions:
+            - Name: BuildDockerImage
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              RunOrder: 1
+              Configuration:
+                ProjectName: !Ref CodeBuild
+                PrimarySource: SourceArtifact
+                EnvironmentVariables: !Sub '[{"name":"ECR_REPOSITORY_URI","value":"${AWS::AccountId}.dkr.ecr.us-west-2.amazonaws.com/${EcrRepo}","type":"PLAINTEXT"}]'
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+        -
+          Name: Deploy
+          Actions:
+            - Name: DeployImage
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: ECS
+                Version: '1'
+              RunOrder: 1
+              Configuration:
+                ClusterName:
+                  Fn::ImportValue: !Sub ${EcsClusterStack}-ecs-cluster
+                ServiceName:
+                  Fn::ImportValue: !Sub ${EcsClusterStack}-fargate-service-name
+                FileName: BuildArtifact::imagedefinitions.json
+              InputArtifacts:
+                - Name: BuildArtifact
+
+  CodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: fargate-codebuild
+      Description: CodeBuild for Fargate
+      ServiceRole: !GetAtt CodePipelineRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      Source:
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 10
