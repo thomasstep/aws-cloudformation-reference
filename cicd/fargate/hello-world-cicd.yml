@@ -8,7 +8,7 @@ Parameters:
     NoEcho: true
   CodePipelineS3BucketName:
     Type: String
-    Default: thomasstep-codepipelinebucket
+    Default: codepipeline-bucket-thomasstep
   EcsClusterStack:
     Type: String
     Default: fargate-cicd-demo-ecs-stack
@@ -36,20 +36,48 @@ Resources:
               Principal:
                   Service:
                     - codepipeline.amazonaws.com
-                    - codebuild.amazonaws.com
               Action:
                 - sts:AssumeRole
       Description: IAM Role for CodePipeline
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+        # - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            - Effect: Allow
+              Principal:
+                  Service:
+                    - codebuild.amazonaws.com
+              Action:
+                - sts:AssumeRole
+      Description: IAM Role for CodeBuild
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/IAMFullAccess
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
-      RoleName: MyCodePipelineRole
+      # Policies:
+      #   - PolicyName: root
+      #     PolicyDocument:
+      #       Version: "2012-10-17"
+      #       Statement:
+      #         - Effect: Allow
+      #           Action:
+      #             - ecr:GetAuthorizationToken
+      #           Resource: '*'
 
   CodePipeline:
+    DependsOn: CodePipelineArtifactBucket
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      # Name: CicdPipeline
       ArtifactStore:
         Location: !Ref CodePipelineS3BucketName
         Type: S3
@@ -87,7 +115,7 @@ Resources:
               Configuration:
                 ProjectName: !Ref CodeBuild
                 PrimarySource: SourceArtifact
-                EnvironmentVariables: !Sub '[{"name":"ECR_REPOSITORY_URI","value":"${AWS::AccountId}.dkr.ecr.us-west-2.amazonaws.com/${EcrRepo}","type":"PLAINTEXT"}]'
+                EnvironmentVariables: !Sub '[{"name":"ECR_REPOSITORY_URI","value":"${AWS::AccountId}.dkr.ecr.us-west-2.amazonaws.com/${EcrRepo}","type":"PLAINTEXT"},{"name":"ECR_LOGIN_URL","value":"${AWS::AccountId}.dkr.ecr.us-west-2.amazonaws.com","type":"PLAINTEXT"}]'
               InputArtifacts:
                 - Name: SourceArtifact
               OutputArtifacts:
@@ -106,23 +134,30 @@ Resources:
                 ClusterName:
                   Fn::ImportValue: !Sub ${EcsClusterStack}-ecs-cluster
                 ServiceName:
-                  Fn::ImportValue: !Sub ${EcsClusterStack}-fargate-service-name
+                  Fn::ImportValue: !Sub ${FargateStack}-fargate-service-name
                 FileName: BuildArtifact::imagedefinitions.json
               InputArtifacts:
                 - Name: BuildArtifact
 
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub /aws/codebuild/${CodeBuild}
+
   CodeBuild:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: fargate-codebuild
       Description: CodeBuild for Fargate
-      ServiceRole: !GetAtt CodePipelineRole.Arn
+      ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:4.0
+        PrivilegedMode: true
       Source:
         Type: CODEPIPELINE
+        BuildSpec: fargate/hello-world/buildspec.yml
       TimeoutInMinutes: 10
