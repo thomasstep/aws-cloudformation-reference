@@ -33,3 +33,4 @@ phases:
 artifacts:
     files:
       - fargate/hello-world/imagedefinitions.json
+    discard-paths: yes

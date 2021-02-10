@@ -61,9 +61,10 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess # To download/upload artifacts to CodePipeline
         - arn:aws:iam::aws:policy/IAMFullAccess
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+        # - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess # To upload artifacts to CodePipeline
       # Policies:
       #   - PolicyName: root
       #     PolicyDocument:
