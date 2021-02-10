@@ -115,7 +115,7 @@ Resources:
               Configuration:
                 ProjectName: !Ref CodeBuild
                 PrimarySource: SourceArtifact
-                EnvironmentVariables: !Sub '[{"name":"ECR_REPOSITORY_URI","value":"${AWS::AccountId}.dkr.ecr.us-west-2.amazonaws.com/${EcrRepo}","type":"PLAINTEXT"},{"name":"ECR_LOGIN_URL","value":"${AWS::AccountId}.dkr.ecr.us-west-2.amazonaws.com","type":"PLAINTEXT"}]'
+                EnvironmentVariables: !Sub '[{"name":"ECR_REPOSITORY_URI","value":"${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepo}","type":"PLAINTEXT"},{"name":"ECR_LOGIN_URL","value":"${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com","type":"PLAINTEXT"}]'
               InputArtifacts:
                 - Name: SourceArtifact
               OutputArtifacts:
