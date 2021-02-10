@@ -43,7 +43,7 @@ Resources:
         - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
-        # - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+        - arn:aws:iam::aws:policy/AmazonECS_FullAccess
 
   CodeBuildRole:
     Type: AWS::IAM::Role
@@ -64,7 +64,6 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess # To download/upload artifacts to CodePipeline
         - arn:aws:iam::aws:policy/IAMFullAccess
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
-        # - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess # To upload artifacts to CodePipeline
       # Policies:
       #   - PolicyName: root
       #     PolicyDocument:
@@ -136,7 +135,7 @@ Resources:
                   Fn::ImportValue: !Sub ${EcsClusterStack}-ecs-cluster
                 ServiceName:
                   Fn::ImportValue: !Sub ${FargateStack}-fargate-service-name
-                FileName: BuildArtifact::imagedefinitions.json
+                FileName: imagedefinitions.json
               InputArtifacts:
                 - Name: BuildArtifact
 
