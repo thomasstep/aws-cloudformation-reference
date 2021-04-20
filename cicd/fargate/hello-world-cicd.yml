@@ -11,10 +11,10 @@ Parameters:
     Default: codepipeline-bucket-thomasstep
   EcsClusterStack:
     Type: String
-    Default: fargate-cicd-demo-ecs-stack
+    Default: ecs-stack
   FargateStack:
     Type: String
-    Default: fargate-cicd-demo-fargate-stack
+    Default: fargate-stack
 
 
 Resources:

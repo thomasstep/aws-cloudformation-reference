@@ -40,7 +40,11 @@ Resources:
 # Public subnets
 # -----------------------------------------------------------------------------
 
-  PublicRouteTable:
+  PublicRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BasicVpc
+  PublicRouteTableB:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref BasicVpc
@@ -53,10 +57,16 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref BasicVpc
 
-  PublicDefaultRoute:
+  PublicDefaultRouteA:
     Type: AWS::EC2::Route
     Properties:
-        RouteTableId: !Ref PublicRouteTable
+        RouteTableId: !Ref PublicRouteTableA
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref InternetGateway
+  PublicDefaultRouteB:
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId: !Ref PublicRouteTableB
         DestinationCidrBlock: 0.0.0.0/0
         GatewayId: !Ref InternetGateway
 
@@ -64,12 +74,12 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnetA
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref PublicRouteTableA
   PublicSubnetBRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnetB
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref PublicRouteTableB
 
 # -----------------------------------------------------------------------------
 # Private subnets
@@ -99,11 +109,9 @@ Resources:
   NatRouteA:
     Type: AWS::EC2::Route
     Properties:
-        RouteTableId:
-          Ref: PrivateRouteTableA
+        RouteTableId: !Ref PrivateRouteTableA
         DestinationCidrBlock: 0.0.0.0/0
-        NatGatewayId:
-          Ref: NatA
+        NatGatewayId: !Ref NatA
 
   NatB:
    Type: AWS::EC2::NatGateway
@@ -120,11 +128,9 @@ Resources:
   NatRouteB:
     Type: AWS::EC2::Route
     Properties:
-        RouteTableId:
-          Ref: PrivateRouteTableB
+        RouteTableId: !Ref PrivateRouteTableB
         DestinationCidrBlock: 0.0.0.0/0
-        NatGatewayId:
-          Ref: NatB
+        NatGatewayId: !Ref NatB
 
   PrivateSubnetARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
