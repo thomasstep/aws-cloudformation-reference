@@ -1,0 +1,3 @@
+## Canary
+
+This is a little more purpose built and meant for synthetic monitoring of APIs. A Lambda function attempts to reach out to a given URL and that Lambda is triggered on an interval defined in a CloudWatch Events Rule. To make this template useful, I suggest going through and changing the URL to something you need monitored then attach a CloudWatch Alarm to monitor the error rate of the Lambda function.

@@ -1,0 +1,3 @@
+## Basic VPC
+
+This template is the foundation for many other templates in this repository. The resulting VPC has 2 public and 2 private /24 subnets. The public subnets are defined as public because they have a connection to an internet gateway, and can, therefore, communicate back and forth with anything on the internet. The public subnets do not have a connection to internet gateways. The private subnets can communicate outside of the VPC but nothing outside of the VPC can initiate communication with anything inside a public subnet. The outbound communication is thanks to NAT gateways which live in the public subnets.

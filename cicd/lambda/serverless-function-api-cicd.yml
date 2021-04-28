@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CI/CD pipeline for serverless API
+
+Parameters:
+  GithubOauthToken:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: github-oauth-token
+    NoEcho: true
+  CodePipelineS3BucketName:
+    Type: String
+    Default: thomasstep-codepipelinebucket
+  ServerlessApiSourceS3BucketName:
+    Type: String
+    Default: thomasstep-serverlessapibucket
+  DeploymentPackageName:
+    Type: String
+    Default: deployment-package.zip
+
+Resources:
+  CodePipelineArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref CodePipelineS3BucketName
+
+  ServerlessApiSourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ServerlessApiSourceS3BucketName
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-deployment-packages
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      VersioningConfiguration:
+        Status: Enabled
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            - Effect: Allow
+              Principal:
+                  Service:
+                    - codepipeline.amazonaws.com
+                    - cloudformation.amazonaws.com
+                    - codebuild.amazonaws.com
+              Action:
+                - sts:AssumeRole
+      Description: IAM Role for MyCodePipeline
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+        - arn:aws:iam::aws:policy/IAMFullAccess
+        - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+      RoleName: MyCodePipelineRole
+
+  MyCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: MyCicdPipeline
+      ArtifactStore:
+        Location: !Ref CodePipelineS3BucketName
+        Type: S3
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        -
+          Name: Ingress
+          Actions:
+            - InputArtifacts: []
+              ActionTypeId:
+                Version: '1'
+                Owner: ThirdParty
+                Category: Source
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: SourceArtifact
+              RunOrder: 1
+              Configuration:
+                Owner: thomasstep
+                Repo: aws-demo
+                PollForSourceChanges: 'true'
+                Branch: master
+                OAuthToken: !Ref GithubOauthToken
+              Name: ApplicationSource
+        -
+          Name: Build
+          Actions:
+            - Name: BuildServerlessApiResources
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              RunOrder: 1
+              Configuration:
+                ProjectName: !Ref ServerlessApiCodeBuild
+                PrimarySource: SourceArtifact
+                EnvironmentVariables: !Sub '[{"name":"S3_BUCKET_NAME","value":"${ServerlessApiSourceS3BucketName}","type":"PLAINTEXT"},{"name":"S3_KEY_NAME","value":"${DeploymentPackageName}","type":"PLAINTEXT"}]'
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+        -
+          Name: Deploy
+          Actions:
+            - Name: DeployServerlessApi
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              RunOrder: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                Capabilities: CAPABILITY_NAMED_IAM
+                RoleArn: !GetAtt CodePipelineRole.Arn
+                StackName: my-serverless-api
+                TemplatePath: BuildArtifact::serverless-api.yml
+                TemplateConfiguration: BuildArtifact::template-configuration.json
+              InputArtifacts:
+                - Name: BuildArtifact
+
+  ServerlessApiCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: serverless-api-codebuild
+      Description: CodeBuild for serverless API
+      ServiceRole: !GetAtt CodePipelineRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      Source:
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 10
