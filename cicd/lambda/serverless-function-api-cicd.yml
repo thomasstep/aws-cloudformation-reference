@@ -6,6 +6,8 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<String>
     Default: github-oauth-token
     NoEcho: true
+  GithubRepoName:
+    Type: String
   CodePipelineS3BucketName:
     Type: String
     Default: thomasstep-codepipelinebucket
@@ -81,7 +83,7 @@ Resources:
               RunOrder: 1
               Configuration:
                 Owner: thomasstep
-                Repo: aws-demo
+                Repo: !Ref GithubRepoName
                 PollForSourceChanges: 'true'
                 Branch: master
                 OAuthToken: !Ref GithubOauthToken
