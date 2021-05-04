@@ -17,7 +17,7 @@ Parameters:
     Description: URI of image you would like to use
 
 Resources:
-  HelloWorldTargetGroup:
+  TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckEnabled: true
@@ -29,22 +29,21 @@ Resources:
       VpcId:
         Fn::ImportValue: !Sub ${VpcStack}-vpc-id
 
-
-  HelloWorldListener:
+  Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
         - Order: 1
-          TargetGroupArn: !Ref HelloWorldTargetGroup
+          TargetGroupArn: !Ref TargetGroup
           Type: forward
       LoadBalancerArn:
         Fn::ImportValue: !Sub ${EcsClusterStack}-alb-arn
       Port: 8080
       Protocol: HTTP
     DependsOn:
-      - HelloWorldTargetGroup
+      - TargetGroup
 
-  HelloWorldService:
+  FargateService:
     Type: AWS::ECS::Service
     Properties:
       Cluster:
@@ -58,7 +57,7 @@ Resources:
         -
           ContainerName: hello-world
           ContainerPort: 8080
-          TargetGroupArn: !Ref HelloWorldTargetGroup
+          TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration:
           AwsvpcConfiguration:
             SecurityGroups:
@@ -69,14 +68,14 @@ Resources:
                 Fn::ImportValue: !Sub ${VpcStack}-private-subnet-a-id
               -
                 Fn::ImportValue: !Sub ${VpcStack}-private-subnet-b-id
-      TaskDefinition: !Ref HelloWorldTaskDefinition
+      TaskDefinition: !Ref FargateServiceTaskDefinition
 
-  HelloWorldLogGroup:
+  FargateServiceLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 7
 
-  HelloWorldTaskDefinition:
+  FargateServiceTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ContainerDefinitions:
@@ -87,7 +86,7 @@ Resources:
           LogConfiguration:
               LogDriver: awslogs
               Options:
-                awslogs-group: !Ref HelloWorldLogGroup
+                awslogs-group: !Ref FargateServiceLogGroup
                 awslogs-stream-prefix: hello-world-container
                 awslogs-region: !Ref AWS::Region
           PortMappings:
@@ -108,6 +107,6 @@ Resources:
 Outputs:
   FargateServiceName:
     Description: A reference to the created Fargate Service
-    Value: !GetAtt HelloWorldService.Name
+    Value: !GetAtt FargateService.Name
     Export:
       Name: !Sub ${AWS::StackName}-fargate-service-name

@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template for auto scaling Fargate service based on basic serverless container API
+
+Parameters:
+  VpcStack:
+    Type: String
+    Description: Name of VPC stack to build off of
+    Default: vpc-stack
+
+  EcsClusterStack:
+    Type: String
+    Description: Name of ECS Cluster stack to build off of
+    Default: ecs-cluster-stack
+
+  Image:
+    Type: String
+    Description: URI of image you would like to use
+
+  MaxContainers:
+    Type: Number
+    Description: Max containers to scale to
+
+Resources:
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: 8080
+      HealthCheckProtocol: HTTP
+      Port: 8080
+      Protocol: HTTP
+      TargetType: ip
+      VpcId:
+        Fn::ImportValue: !Sub ${VpcStack}-vpc-id
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Order: 1
+          TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-alb-arn
+      Port: 8080
+      Protocol: HTTP
+    DependsOn:
+      - TargetGroup
+
+  FargateService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-ecs-cluster
+      DeploymentController:
+        Type: ECS
+      DesiredCount: 1
+      HealthCheckGracePeriodSeconds: 60
+      LaunchType: FARGATE
+      LoadBalancers:
+        -
+          ContainerName: serverless-container-api
+          ContainerPort: 8080
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+          AwsvpcConfiguration:
+            SecurityGroups:
+              -
+                Fn::ImportValue: !Sub ${EcsClusterStack}-default-security-group
+            Subnets:
+              -
+                Fn::ImportValue: !Sub ${VpcStack}-private-subnet-a-id
+              -
+                Fn::ImportValue: !Sub ${VpcStack}-private-subnet-b-id
+      TaskDefinition: !Ref FargateServiceTaskDefinition
+
+  FargateServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
+  FargateServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        -
+          Name: serverless-container-api
+          Essential: true
+          Image: !Ref Image
+          LogConfiguration:
+              LogDriver: awslogs
+              Options:
+                awslogs-group: !Ref FargateServiceLogGroup
+                awslogs-stream-prefix: serverless-container-api
+                awslogs-region: !Ref AWS::Region
+          PortMappings:
+            -
+              ContainerPort: 8080
+              HostPort: 8080
+              Protocol: tcp
+      Cpu: '256'
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-default-role
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        -  FARGATE
+      TaskRoleArn:
+        Fn::ImportValue: !Sub ${EcsClusterStack}-default-role
+
+# -----------------------------------------------------------
+#  AUTO SCALING
+# -----------------------------------------------------------
+
+  AutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutMetricAlarm
+                Resource: '*'
+
+  AutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MinCapacity: 1
+      MaxCapacity: !Ref MaxContainers
+      ResourceId: !Join
+        - '/'
+        - - service
+          - Fn::ImportValue: !Sub ${EcsClusterStack}-ecs-cluster
+          - !GetAtt FargateService.Name
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+      RoleARN: !GetAtt AutoScalingRole.Arn
+
+  ScaleUpPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${FargateService}ScaleUpPolicy'
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref AutoScalingTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 60
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            ScalingAdjustment: 1
+  ScaleDownPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${FargateService}ScaleDownPolicy'
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref AutoScalingTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 60
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalUpperBound: 0
+            ScalingAdjustment: -1
+
+  # this alarm is somewhat nonsense but easy to test out
+  # change to something relevant before production
+  AlarmHighRequests:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: TRUE
+      AlarmActions:
+        - !Ref ScaleUpPolicy
+      AlarmDescription: !Sub
+        - 'Scale Up Alarm based on requests for ${FargateServiceName}'
+        - FargateServiceName: !GetAtt FargateService.Name
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 2
+      # these can be found in the console after selecting a namespace to filter by
+      Dimensions:
+        - Name: TargetGroup
+          Value: !GetAtt TargetGroup.TargetGroupFullName
+      EvaluationPeriods: 3
+      # this can be found in the console on the screen before a metric is graphed
+      MetricName: RequestCountPerTarget
+      # this can be found in the console on the first screen of filtering metrics
+      Namespace: AWS/ApplicationELB
+      OKActions:
+        - !Ref ScaleDownPolicy
+      Period: 60
+      Statistic: Sum
+      Threshold: 3000
+      TreatMissingData: ignore
+      Unit: None # comes from the metric
+
+Outputs:
+  FargateServiceName:
+    Description: A reference to the created Fargate Service
+    Value: !GetAtt FargateService.Name
+    Export:
+      Name: !Sub ${AWS::StackName}-fargate-service-name
