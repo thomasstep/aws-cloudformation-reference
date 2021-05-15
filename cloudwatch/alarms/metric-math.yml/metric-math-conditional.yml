@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Example of using conditions in metric math
+
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    Description: Name of Lambda function to monitor
+  DurationThreshold:
+    Type: String
+    Description: If average duration exceeds this (in ms) an alarm will trigger
+  ErrorThreshold:
+    Type: String
+    Description: If sum of errors exceeds this count an alarm will trigger
+
+Resources:
+  MathAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: True
+      # AlarmActions:
+      #   - !Ref ScaleUpPolicy
+      # OKActions:
+      #   - !Ref ScaleDownPolicy
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 3
+      Metrics:
+        - Id: duration
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Duration
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref LambdaFunctionName
+            Period: 300
+            Stat: Average
+            Unit: Milliseconds
+          ReturnData: False
+        - Id: errors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref LambdaFunctionName
+            Period: 300
+            Stat: Sum
+            Unit: Count
+          ReturnData: False
+        - Id: math
+          Expression: !Sub "IF(duration > ${DurationThreshold} OR errors > ${ErrorThreshold}, 2, 0)"
+          Period: 300
+          ReturnData: True
+      Threshold: 1

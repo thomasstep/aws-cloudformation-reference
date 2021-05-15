@@ -5,4 +5,4 @@ First, you will need an ECR repository. Create one in the AWS console or use a t
 - `docker build . -t $YOUR_AWS_ECR_URI:$TAG`
 - `docker push $YOUR_AWS_ECR_URI:$TAG`
 If you are using a public ECR repository substitue `public.ecr.aws/$ECR_DEFAULT_ALIAS` for `$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com`. The `$ECR_DEFAULT_ALIAS` will be part of the public repository's URI.
-After the image is pushed, spin up the VPC (`/vpc/basic/vpc.yml`) and ECS cluster (`/fargate/ecs-cluster.yml`) templates followed by the Fargate (`serverless-container-api.yml`) template in this directory.
+After the image is pushed, spin up the [VPC](../../vpc/basic/vpc.yml) and [ECS cluster](../ecs-cluster.yml) templates followed by the [Fargate](./serverless-container-api.yml) template in this directory.
