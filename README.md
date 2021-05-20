@@ -4,7 +4,7 @@ The intention of this project is to create CloudFormation templates that can get
 
 There are tons of services offered by AWS and it can be confusing to know which integrations work the best or how to even start using them. I have strong opinions about most AWS services that my experience plays into. I want this project to hold my opinionated view on how to build infrastructure on AWS.
 
-### Compute
+## Compute
 
 For more information about computing services offered by AWS and corresponding CloudFormation templates, look in the follow folders:
 - [Lambda](/lambda)
@@ -15,7 +15,7 @@ For more information about computing services offered by AWS and corresponding C
 For more information about deployment and CI/CD services offered by AWS and corresponding CloudFormation templates, look in the follow folders:
 - [CI/CD](/cicd)
 
-### Monitoring
+## Monitoring
 
 For more information about monitoring services offered by AWS and corresponding CloudFormation templates, look in the follow folders:
 - [CloudWatch](/cloudwatch)
@@ -23,7 +23,7 @@ For more information about monitoring services offered by AWS and corresponding 
   - [Metrics](/cloudwatch/metrics)
   - [Alarms](/cloudwatch/alarms)
 
-### Security
+## Security
 
 For more information about security services offered by AWS and corresponding CloudFormation templates, look in the follow folders:
 - [IAM](/iam)
