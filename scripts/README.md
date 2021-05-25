@@ -8,7 +8,7 @@ This script's intent is to zip up code, upload to a [versioned S3 bucket](../s3/
 
 The template also needs the JSON parsing CLI `jq` installed and the AWS CLI to be properly configured with credentials.
 
-This script works well at updating templates similar to the [basic Lambda API](../lambda/serverless-function-api.yml).
+This script works well at updating templates similar to the [basic Lambda API](../lambda/basic/serverless-function-api.yml).
 
 ## Push to S3
 
