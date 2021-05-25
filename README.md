@@ -10,6 +10,12 @@ For more information about computing services offered by AWS and corresponding C
 - [Lambda](/lambda)
 - [Fargate](/fargate)
 
+## Data Storage
+
+For more information about data storage (database, long-term, etc.) services offered by AWS and corresponding CloudFormation templates, look in the follow folders:
+- [DynamoDB](/dynamodb)
+- [S3](/s3)
+
 ## Deployment
 
 For more information about deployment and CI/CD services offered by AWS and corresponding CloudFormation templates, look in the follow folders:

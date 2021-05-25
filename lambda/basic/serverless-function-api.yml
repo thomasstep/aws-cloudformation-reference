@@ -1,6 +1,17 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Starter template for API Gateway and Lambda function integration
 
+Parameters:
+  SourceBucket:
+    Type: String
+    Description: S3 bucket with source
+  SourceKey:
+    Type: String
+    Description: S3 key with Lambda source code
+  SourceVersion:
+    Type: String
+    Description: S3 version for source code
+
 Resources:
 #-------------------------------------------------------------------------------
 # LAMBDA RESOURCES
@@ -26,17 +37,20 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        ZipFile: |
-          module.exports.handler = (event, context, callback) => {
-            console.log('Hello World!');
-            const data = {
-              statusCode: 200,
-              body: JSON.stringify({
-                hello: 'world',
-              }),
-            };
-            callback(null, data);
-          }
+        S3Bucket: !Ref SourceBucket
+        S3Key: !Ref SourceKey
+        S3ObjectVersion: !Ref SourceVersion
+        # ZipFile: |
+        #   module.exports.handler = (event, context, callback) => {
+        #     console.log('Hello World!');
+        #     const data = {
+        #       statusCode: 200,
+        #       body: JSON.stringify({
+        #         hello: 'world',
+        #       }),
+        #     };
+        #     callback(null, data);
+        #   }
       Description: Starter Lambda Function
       Environment:
         Variables:
