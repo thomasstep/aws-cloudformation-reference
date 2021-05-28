@@ -64,6 +64,12 @@ Resources:
       Runtime: nodejs12.x
       Timeout: 30
 
+  LambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunction}"
+      RetentionInDays: 7
+
   LambdaFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:

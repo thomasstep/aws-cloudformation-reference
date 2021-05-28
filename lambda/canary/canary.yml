@@ -38,6 +38,12 @@ Resources:
       Runtime: nodejs12.x
       Timeout: 30
 
+  CanaryLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CanaryLambda}"
+      RetentionInDays: 7
+
   CanaryCron:
     Type: AWS::Events::Rule
     Properties:
