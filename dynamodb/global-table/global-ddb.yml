@@ -1,10 +1,12 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Basic template for DDB Table
+Description: Template for global DDB Table
 
 Resources:
   Table:
-    Type: AWS::DynamoDB::Table
+    Type: AWS::DynamoDB::GlobalTable
     Properties: 
+      Replicas:
+        - Region: !Ref AWS::Region
       AttributeDefinitions: 
         -
           AttributeName: id
