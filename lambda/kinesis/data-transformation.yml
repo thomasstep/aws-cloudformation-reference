@@ -99,7 +99,7 @@ Resources:
 
   Firehose:
     Type: AWS::KinesisFirehose::DeliveryStream
-    Properties: 
+    Properties:
       DeliveryStreamName: !Ref DeliveryStreamName
       DeliveryStreamType: DirectPut
       ExtendedS3DestinationConfiguration:
@@ -177,6 +177,6 @@ Resources:
               - 'lambda:InvokeFunction'
               - 'lambda:GetFunctionConfiguration'
             Resource:
-              - !Sub "${LambdaFunction.Arn}*"
+              - !Sub "${LambdaFunction.Arn}*" # NOTE: there is an * after the Lambda's ARN
       Roles:
         - !Ref DeliveryRole
