@@ -10,6 +10,8 @@ Failed to call ImportSourceCredentials, reason: Access token with server type GI
 
 If this occurs, the initial setup might already be complete and this template is no longer necessary to let AWS set up webhooks on your behalf.
 
+The personal access token present in the parameter used to create the source credential (`codebuild-github-token` by default) will need `admin:repo_hook`, and `repo` scopes.
+
 ### CodeBuild With Webhook
 
 In order to create a CodeBuild instance based off of a GitHub webhook, the [`codebuild-source-credential` template](./codebuild-source-credential.yml) (see above) needs to be successfully deployed first.
