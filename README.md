@@ -4,6 +4,8 @@ The intention of this project is to create CloudFormation templates that can get
 
 There are tons of services offered by AWS and it can be confusing to know which integrations work the best or how to even start using them. I have strong opinions about most AWS services that my experience plays into. I want this project to hold my opinionated view on how to build infrastructure on AWS.
 
+If you are new to AWS and wondering how all of these can play together, check out [this guide](https://thomasstep.gumroad.com/l/serverless-guide).
+
 ## Compute
 
 For more information about computing services offered by AWS and corresponding CloudFormation templates, look in the follow folders:
